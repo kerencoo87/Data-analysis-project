@@ -71,96 +71,49 @@ def add_age_category(df):
 # ---------------------------------------------------------
 
 def calculate_risk_groups(df):
-
-    # A copy of the DataFrame for risk analysis
     df_risk = df.copy()
 
-    # Calculation of the risk score by age:
-    # age above or equal to 60 gets 1 point
-    # age below 60 gets 0 points
-    age_points = np.where(
-        df_risk["AGE"] >= 60,
-        1,
-        0
-    )
+    # 1. AGE POINTS (>= 60 is 1 pt)
+    df_risk["AGE"] = pd.to_numeric(df_risk["AGE"], errors="coerce").fillna(0)
+    age_points = np.where(df_risk["AGE"] >= 60, 1, 0)
 
-    # Calculation of the risk score by mutation:
-    # presence of TP53 mutation gets 2 points
-    tp53_points = np.where(
-        df_risk["TP53_MUTATION"] == 1,
-        2,
-        0
-    )
+    # 2. TP53 POINTS (1 is 2 pts)
+    df_risk["TP53_MUTATION"] = pd.to_numeric(df_risk["TP53_MUTATION"], errors="coerce").fillna(0)
+    tp53_points = np.where(df_risk["TP53_MUTATION"] == 1, 2, 0)
 
-    # Calculation of the risk score by STAGE_CATEGORY
-    #
-    # Stage I = 0
-    # Stage II = 1
-    # Stage III/IV = 3
+    # 3. STAGE POINTS (Handles typos like TITA, ITA, IZB)
+    s_col = df_risk["STAGE_CATEGORY"].astype(str).str.upper().str.strip()
 
     stage_conditions = [
+        # Check Stage III or IV (including typos like TITA, IIIA, IIIB, IIIC, IV)
+        s_col.str.contains("STAGE III|STAGE IV|STAGE 3|STAGE 4|TITA|III", na=False),
 
-        df_risk["STAGE_CATEGORY"].str.contains(
-            "Stage I/T1",
-            na=False
-        ),
+        # Check Stage II (including typos like ITA, IZB, IIA, IIB, IIC)
+        s_col.str.contains("STAGE II|STAGE 2|ITA|IZB", na=False),
 
-        df_risk["STAGE_CATEGORY"].str.contains(
-            "Stage II/T2",
-            na=False
-        ),
-
-        df_risk["STAGE_CATEGORY"].str.contains(
-            "Stage III|Stage IV",
-            na=False
-        ),
+        # Check Stage I
+        s_col.str.contains("STAGE I|STAGE 1", na=False)
     ]
 
-    stage_choices = [0, 1, 3]
+    stage_choices = [3, 1, 0]
 
-    stage_points = np.select(
-        stage_conditions,
-        stage_choices,
-        default=0
-    )
+    stage_points = np.select(stage_conditions, stage_choices, default=0)
 
-    # Calculation of the total risk score
-    df_risk["RISK_SCORE"] = (
-        age_points
-        + tp53_points
-        + stage_points
-    )
+    # 4. TOTAL RISK SCORE
+    df_risk["RISK_SCORE"] = age_points + tp53_points + stage_points
 
-    # Split groups according to risk score:
-    #
-    # 0-1 = Low risk
-    # 2-3 = Medium risk
-    # 4-6 = High risk
-
+    # 5. RISK GROUP ASSIGNMENT
     group_conditions = [
-
         df_risk["RISK_SCORE"] <= 1,
-
-        (df_risk["RISK_SCORE"] >= 2)
-        & (df_risk["RISK_SCORE"] <= 3),
-
-        df_risk["RISK_SCORE"] >= 4,
+        (df_risk["RISK_SCORE"] >= 2) & (df_risk["RISK_SCORE"] <= 3),
+        df_risk["RISK_SCORE"] >= 4
     ]
 
-    group_choices = [
-        "Low Risk",
-        "Medium Risk",
-        "High Risk"
-    ]
+    group_choices = ["Low Risk", "Medium Risk", "High Risk"]
 
-    df_risk["RISK_GROUP"] = np.select(
-        group_conditions,
-        group_choices,
-        default="Unknown"
-    )
+    df_risk["RISK_GROUP"] = np.select(group_conditions, group_choices, default="Low Risk")
 
     return df_risk
-
 
 def calculate_single_patient_risk(age, tp53, stage):
     # Column names aligned with calculate_risk_groups expectations
