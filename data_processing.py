@@ -163,18 +163,18 @@ def calculate_risk_groups(df):
 
 
 def calculate_single_patient_risk(age, tp53, stage):
-    # שמות העמודות הותאמו בדיוק לציפיות של calculate_risk_groups
+    # Column names aligned with calculate_risk_groups expectations
     patient_df = pd.DataFrame([{
         "AGE": float(age),
         "TP53_MUTATION": int(tp53),
         "AJCC_PATHOLOGIC_TUMOR_STAGE": str(stage)
     }])
     patient_df.columns = patient_df.columns.str.strip()
-    # חישוב ה-Stage Category וה-Risk
+    # Calculate Stage Category and Risk
     patient_df = add_stage_category(patient_df)
     result_df = calculate_risk_groups(patient_df)
 
-    # החזרת תוצאה נקייה כמילון לחולה היחיד
+    # Return result dictionary for the single patient
     return {
         "risk_score": int(result_df["RISK_SCORE"].iloc[0]),
         "risk_group": str(result_df["RISK_GROUP"].iloc[0])
