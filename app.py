@@ -36,7 +36,7 @@ with col_input:
     tp53_radio = st.radio("TP53 Gene Status:", options=["Wild-Type (No Mutation)", "Mutated"], horizontal=True, on_change=reset_calculation)
     user_tp53 = 1 if "Mutated" in tp53_radio else 0
     user_stage = st.selectbox("AJCC Pathologic Stage:", options=["Stage I", "Stage II", "Stage III", "Stage IV"], on_change=reset_calculation)
-    user_survival = st.number_input("Patient OS (months):", min_value=0, value=0, step=1, on_change=reset_calculation)
+    user_survival = st.number_input("Patient overall survival (months):", min_value=0, value=0, step=1, on_change=reset_calculation)
     btn_calc = st.button("Calculate Risk Score", type="primary", use_container_width=True)
     if btn_calc:
             st.session_state['calculated'] = True
