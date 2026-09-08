@@ -5,13 +5,14 @@ import plotly.graph_objects as go
 from lifelines import KaplanMeierFitter
 
 from api_data import get_data
-from data_processing import calculate_single_patient_risk, calculate_risk_groups
+from data_processing import calculate_single_patient_risk, add_stage_category, calculate_risk_groups
 
-# 1. Load data and assign stage column
+# Load data and assign stage column
 df_final = get_data()
+
 df_final['STAGE_CATEGORY'] = df_final['AJCC_PATHOLOGIC_TUMOR_STAGE']
 
-# 2. Calculate risk groups for the full cohort
+# Calculate risk groups for the full cohort
 df_k_m = calculate_risk_groups(df_final)
 
 # Streamlit Configuration
@@ -55,7 +56,6 @@ with col_result:
 
     # 3. Render results ONLY if inputs are valid AND button was clicked
     elif st.session_state.get('calculated', False):
-    #if btn_calc:
         res = calculate_single_patient_risk(user_age, user_tp53, user_stage)
 
         if "error" in res:
@@ -77,7 +77,7 @@ with col_result:
             st.markdown("---")
 
 
-    # Swapped tab order
+    # Define tab order
         tab1, tab2 = st.tabs([
                 "📊 Data-Driven Kaplan-Meier",
             "🧬 TP53 Profile by Stage"
@@ -181,27 +181,9 @@ with col_result:
                 barmode="stack"
             )
 
-            # if btn_calc and assigned_group:
-            #     tp53_label = "Mutated" if user_tp53 == 1 else "Wild-Type"
-            #     wt_pct = stage_data[user_stage]["Wild-Type"]
-            #     y_pos = 100 if user_tp53 == 1 else (wt_pct / 2)
-            #
-            #     fig_tp53.add_trace(go.Scatter(
-            #         x=[user_stage],
-            #         y=[y_pos],
-            #         mode='markers+text',
-            #         name='Current Patient',
-            #         # marker=dict(color='yellow', size=16, symbol='diamond', line=dict(width=2, color='black')),
-            #         text=[f" Patient ({tp53_label})"],
-            #         textposition="top center"
-            #     ))
-
             fig_tp53.update_layout(yaxis=dict(range=[0, 115]))
             st.plotly_chart(fig_tp53, use_container_width=True)
-            if btn_calc and assigned_group:
-                st.caption(
-                    f"💡 **Molecular Context:** The patient presents with **{tp53_label} TP53** at **{user_stage}**."
-                )
+
     else:
         assigned_group = None
         st.info("Fill in the clinical parameters and click **Calculate Risk Score**.")

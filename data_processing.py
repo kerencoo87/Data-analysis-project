@@ -82,6 +82,7 @@ def calculate_risk_groups(df):
     tp53_points = np.where(df_risk["TP53_MUTATION"] == 1, 2, 0)
 
     # 3. STAGE POINTS (Handles typos like TITA, ITA, IZB)
+
     s_col = df_risk["STAGE_CATEGORY"].astype(str).str.upper().str.strip()
 
     stage_conditions = [
@@ -94,6 +95,7 @@ def calculate_risk_groups(df):
         # Check Stage I
         s_col.str.contains("STAGE I|STAGE 1", na=False)
     ]
+
 
     stage_choices = [3, 1, 0]
 
@@ -114,6 +116,10 @@ def calculate_risk_groups(df):
     df_risk["RISK_GROUP"] = np.select(group_conditions, group_choices, default="Low Risk")
 
     return df_risk
+
+# ---------------------------------------------------------
+# 5. Calculate risk score for patient
+# ---------------------------------------------------------
 
 def calculate_single_patient_risk(age, tp53, stage):
     # Column names aligned with calculate_risk_groups expectations

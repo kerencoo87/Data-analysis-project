@@ -38,8 +38,7 @@ def main():
 
 
     # ---------------------------------------------------------
-    # 3. Analyze mortality according to individual
-    #    risk factors
+    # 3. Analyze mortality according to individual risk factors
     # ---------------------------------------------------------
 
     age_stats = mortality_by_age(df_final)
