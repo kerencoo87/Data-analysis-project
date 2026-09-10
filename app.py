@@ -154,36 +154,65 @@ with col_result:
                 )
 
         # ---------------------------------------------------------
-        # TAB 2: TP53 Profile by Stage
+        # TAB 2: Dynamic TP53 Profile by Stage
         # ---------------------------------------------------------
         with tab2:
-            stage_data = {
-                "Stage I": {"Wild-Type": 72, "Mutated": 28},
-                "Stage II": {"Wild-Type": 65, "Mutated": 35},
-                "Stage III": {"Wild-Type": 52, "Mutated": 48},
-                "Stage IV": {"Wild-Type": 40, "Mutated": 60}
-            }
+            # Add stage categories to df_final
+            df_tab2 = add_stage_category(df_final)
 
-            tp53_stage_df = pd.DataFrame([
-                {"Stage": stage, "TP53 Status": status, "Percentage": pct}
-                for stage, status_dict in stage_data.items()
-                for status, pct in status_dict.items()
-            ])
+            # Group by mapped STAGE_CATEGORY and TP53_MUTATION
+            stage_tp53_counts = (
+                df_tab2.groupby(["STAGE_CATEGORY", "TP53_MUTATION"])
+                .size()
+                .unstack(fill_value=0)
+            )
+
+            # Convert counts to percentages per stage
+            stage_tp53_pct = stage_tp53_counts.div(stage_tp53_counts.sum(axis=1), axis=0) * 100
+
+            # Reshape into long format for Plotly Express
+            tp53_stage_df = stage_tp53_pct.reset_index().melt(
+                id_vars="STAGE_CATEGORY",
+                var_name="TP53_Status_Num",
+                value_name="Percentage"
+            )
+
+            # Map numeric 0/1 to labels
+            tp53_stage_df["TP53 Status"] = tp53_stage_df["TP53_Status_Num"].map({
+                0: "Wild-Type",
+                1: "Mutated"
+            })
+
+            # Exclude non-standard/unknown categories if needed
+            tp53_stage_df = tp53_stage_df[
+                ~tp53_stage_df["STAGE_CATEGORY"].isin(["Other/Unknown", "Unknown"])
+            ]
+
+            # Define exact display order using category labels from categorize_stage_fixed
+            desired_order = [
+                "Early (Stage I/T1)",
+                "Intermediate (Stage II/T2)",
+                "Advanced (Stage III/T3)",
+                "Advanced (Stage IV/T4)"
+            ]
 
             fig_tp53 = px.bar(
                 tp53_stage_df,
-                x="Stage",
+                x="STAGE_CATEGORY",
                 y="Percentage",
                 color="TP53 Status",
-                title="TP53 Mutation Prevalence Across Pathologic Stages",
-                labels={"Percentage": "Percentage of Cohort (%)", "Stage": "AJCC Pathologic Stage"},
+                title="TP53 Mutation Prevalence Across Pathologic Stages (Empirical TCGA Data)",
+                labels={
+                    "Percentage": "Percentage of Cohort (%)",
+                    "STAGE_CATEGORY": "Stage Category"
+                },
                 color_discrete_map={"Wild-Type": "#2b5c8f", "Mutated": "#d95f02"},
-                barmode="stack"
+                barmode="stack",
+                category_orders={"STAGE_CATEGORY": desired_order}
             )
 
             fig_tp53.update_layout(yaxis=dict(range=[0, 115]))
             st.plotly_chart(fig_tp53, use_container_width=True)
-
     else:
         assigned_group = None
         st.info("Fill in the clinical parameters and click **Calculate Risk Score**.")
