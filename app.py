@@ -24,37 +24,58 @@ st.markdown("---")
 if 'calculated' not in st.session_state:
     st.session_state['calculated'] = False
 
+
 def reset_calculation():
     """Resets the calculation state when any input parameter changes."""
     st.session_state['calculated'] = False
+
 
 col_input, col_result = st.columns([1, 1], gap="medium")
 
 with col_input:
     st.subheader("📋 Patient Clinical Parameters")
-    user_age = st.number_input("Patient Age (years):", min_value=0, value=60, step=1, on_change=reset_calculation)
-    tp53_radio = st.radio("TP53 Gene Status:", options=["Wild-Type (No Mutation)", "Mutated"], horizontal=True, on_change=reset_calculation)
+
+    user_age = st.slider(
+        "Patient Age (years):",
+        min_value=18,
+        max_value=110,
+        value=60,
+        step=1,
+        on_change=reset_calculation
+    )
+
+    tp53_radio = st.radio(
+        "TP53 Gene Status:",
+        options=["Wild-Type (No Mutation)", "Mutated"],
+        horizontal=True,
+        on_change=reset_calculation
+    )
     user_tp53 = 1 if "Mutated" in tp53_radio else 0
-    user_stage = st.selectbox("AJCC Pathologic Stage:", options=["Stage I", "Stage II", "Stage III", "Stage IV"], on_change=reset_calculation)
-    user_survival = st.number_input("Patient overall survival (months):", min_value=0, value=0, step=1, on_change=reset_calculation)
+
+    user_stage = st.selectbox(
+        "AJCC Pathologic Stage:",
+        options=["Stage I", "Stage II", "Stage III", "Stage IV"],
+        on_change=reset_calculation
+    )
+
+    user_survival = st.slider(
+        "Patient overall survival (months):",
+        min_value=0,
+        max_value=300,
+        value=0,
+        step=1,
+        on_change=reset_calculation
+    )
+
     btn_calc = st.button("Calculate Risk Score", type="primary", use_container_width=True)
     if btn_calc:
-            st.session_state['calculated'] = True
+        st.session_state['calculated'] = True
+
 with col_result:
     st.subheader("📊 Stratification & Analytics")
-    is_age_valid = (user_age is not None) and (18 <= user_age <= 110)
-    is_survival_valid = (user_survival is not None) and (0 <= user_survival <= 300)
-    # 2. Render warning if invalid
-    if not is_age_valid:
-        st.error("❌ **Invalid Input:** Patient Age must be between 18 and 110 years. Previous results cleared.")
-        st.info("Please correct the age parameter and click **Calculate Risk Score**.")
-    elif not is_survival_valid:
-        st.error(
-            "❌ **Invalid Input:** Overall Survival time must be between 0 and 360 months. Previous results cleared.")
-        st.info("Please correct the survival time parameter and click **Calculate Risk Score**.")
 
-    # 3. Render results ONLY if inputs are valid AND button was clicked
-    elif st.session_state.get('calculated', False):
+    # Render results ONLY if button was clicked
+    if st.session_state.get('calculated', False):
         res = calculate_single_patient_risk(user_age, user_tp53, user_stage)
 
         if "error" in res:
@@ -75,13 +96,11 @@ with col_result:
 
             st.markdown("---")
 
-
-    # Define tab order
+        # Define tabs for analytics
         tab1, tab2 = st.tabs([
-                "📊 Data-Driven Kaplan-Meier",
+            "📊 Data-Driven Kaplan-Meier",
             "🧬 TP53 Profile by Stage"
         ])
-
 
         # ---------------------------------------------------------
         # TAB 1: Empirical TCGA Data-Based Kaplan-Meier
@@ -156,38 +175,31 @@ with col_result:
         # TAB 2: Dynamic TP53 Profile by Stage
         # ---------------------------------------------------------
         with tab2:
-            # Add stage categories to df_final
             df_tab2 = add_stage_category(df_final)
 
-            # Group by mapped STAGE_CATEGORY and TP53_MUTATION
             stage_tp53_counts = (
                 df_tab2.groupby(["STAGE_CATEGORY", "TP53_MUTATION"])
                 .size()
                 .unstack(fill_value=0)
             )
 
-            # Convert counts to percentages per stage
             stage_tp53_pct = stage_tp53_counts.div(stage_tp53_counts.sum(axis=1), axis=0) * 100
 
-            # Reshape into long format for Plotly Express
             tp53_stage_df = stage_tp53_pct.reset_index().melt(
                 id_vars="STAGE_CATEGORY",
                 var_name="TP53_Status_Num",
                 value_name="Percentage"
             )
 
-            # Map numeric 0/1 to labels
             tp53_stage_df["TP53 Status"] = tp53_stage_df["TP53_Status_Num"].map({
                 0: "Wild-Type",
                 1: "Mutated"
             })
 
-            # Exclude non-standard/unknown categories if needed
             tp53_stage_df = tp53_stage_df[
                 ~tp53_stage_df["STAGE_CATEGORY"].isin(["Other/Unknown", "Unknown"])
             ]
 
-            # Define exact display order using category labels from categorize_stage_fixed
             desired_order = [
                 "Early (Stage I/T1)",
                 "Intermediate (Stage II/T2)",
@@ -212,6 +224,6 @@ with col_result:
 
             fig_tp53.update_layout(yaxis=dict(range=[0, 115]))
             st.plotly_chart(fig_tp53, use_container_width=True)
+
     else:
-        assigned_group = None
         st.info("Fill in the clinical parameters and click **Calculate Risk Score**.")
